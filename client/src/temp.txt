@@ -1,0 +1,2155 @@
+
+
+
+/**
+ *
+ *
+ *
+ *
+ import React, { Component } from 'react';
+import { Button, Dropdown, DropdownButton, Accordion, Card, ListGroup,Modal,InputGroup,FormControl,Form, Alert,Spinner} from 'react-bootstrap';
+import './Styles/report.css';
+import { MDBDataTable } from 'mdbreact';
+import HTTPRequest from 'axios'
+import { MDBTable, MDBTableHead, MDBTableBody} from 'mdbreact';
+
+import config from '../config';
+export default class report_details extends Component {
+
+    constructor() {
+        super();
+        this.state = {
+            opccomboest: 'Selecciona una Opcion',
+            opccombosestOPC: [],
+            opccomboreportes: 'Selecciona una Opcion',
+            opccomboreportesOPC: [],
+            resultDetailheads: [],
+            resultDetailitems: [],
+            OpIntitems:[],
+            componentNew:'',
+            perteneceNew:'',
+            infoDetail: null,
+            infoKey:null,
+            infoModalSet:null,
+            temp: null,
+            titleInfoModal:'',
+            activebtn:false,
+            namecontRes:'',
+            modalNewShow:false,
+            modalShowType:false,
+            flagmodalInversiones:true,
+            modalInfoShow:false,
+            modalFlagEspeciales:false,
+            infoEspecialesSet:null,
+            titleModalFlagEspe:'',
+            tipos:[],
+            operations:[],
+            idactual:'',//id del Ejercicio
+            ejercicioactual:'',
+            descripcionactual:'',
+            titleModalShowtype:'',dataTemp:null,
+            tempCodeSubmit:'',//Codigo Agrupador
+            tipoAccionAct:'',//Tipo de Accion
+            tempIDSubmit:'',
+            itemsOPI:[],
+            itemeaux:null,
+            itemsopcion:[],itemActual:null,
+            campoEspe:['','',''],
+            DESI:'',DENO:'',
+            DISI:'',DINO:'',
+            DCSI:'',DCNO:''
+        }
+        this.OperacionEspecial=this.OperacionEspecial.bind(this);
+        this.componentDidMount = this.componentDidMount.bind(this);
+        this.getEstFiscal = this.getEstFiscal.bind(this);
+        this.setEstFiscalHeader = this.setEstFiscalHeader.bind(this);
+        this.onChangeComponent=this.onChangeComponent.bind(this);
+        this.onChangePertenece=this.onChangePertenece.bind(this);
+        this.submitNewComponent=this.submitNewComponent.bind(this);
+        this.getTipos=this.getTipos.bind(this);
+        this.comboTypeAction=this.comboTypeAction.bind(this);
+        this.getOperations=this.getOperations.bind(this);
+        this.comboOperationAction=this.comboOperationAction.bind(this);
+        this.showComponentKey=this.showComponentKey.bind(this);
+        this.getDetailKeyOpInt=this.getDetailKeyOpInt.bind(this);
+        this.getDetailKeyOptions=this.getDetailKeyOptions.bind(this);
+        this.getDetailKeyAnexos=this.getDetailKeyAnexos.bind(this);
+        this.getDetailKeyEspeciales=this.getDetailKeyEspeciales.bind(this);
+        this.setActionCodeA=this.setActionCodeA.bind(this);
+        this.setActionDatosID=this.setActionDatosID.bind(this);
+        this.setActionAnexos=this.setActionAnexos.bind(this);
+        this.setActionEspeciales=this.setActionEspeciales.bind(this);
+        this.setActionOpcionI=this.setActionOpcionI.bind(this);
+        this.setActionOpciones=this.setActionOpciones.bind(this);
+        this.setActionPT=this.setActionPT.bind(this);
+        this.setActionReportes=this.setActionReportes.bind(this);
+        this.setActioncondicionada=this.setActioncondicionada.bind(this);
+        this.submitCodeA=this.submitCodeA.bind(this);
+        this.saveAction=this.saveAction.bind(this);
+        this.obtenOPINT=this.obtenOPINT.bind(this);
+        this.addNewOption=this.addNewOption.bind(this);
+        this.getDetailsPTSET=this.getDetailsPTSET.bind(this);
+        this.updateComponent=this.updateComponent.bind(this);
+    }
+
+    componentDidMount() {
+        this.getOperations();
+        this.getTipos();
+        this.getEstFiscal();
+    }
+    getEstFiscal() {//Obtiene Estructuras Fiscales
+        let este = this;
+        HTTPRequest.get(config.host+'/api/getHeadersExercise', {
+        }).then(function (response) {
+            if (response.data.length > 0) {
+
+                response.data.map((item) => {
+                    este.state.opccombosestOPC.push(<Dropdown.Item key={item.ejercicio} as="button" onClick={() => este.setEstFiscalHeader(item.ejercicio, item.descripcion)}>{item.descripcion}</Dropdown.Item>)
+                })
+            }
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    setEstFiscalHeader(ejercicio, descripcion) {//Obtiene Reportes de la Estructura Fiscal
+        let este = this;
+        this.setState({ opccomboest: descripcion, opccomboreportes: 'Reportes ' + ejercicio, opccomboreportesOPC: [],descripcion,activebtn:false  })
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_get_cat_menureportes',
+            headers: {
+                ejercicio: ejercicio
+            }
+        }).then(function (response) {
+            if (response.data.length > 0) {
+
+                response.data.map((item) => {
+                    este.state.opccomboreportesOPC.push(<Dropdown.Item key={item.id} as="button" onClick={() => este.getDetailsReport(item.id, item.ejercicio, item.descripcion)}>{item.ejercicio} - {item.descripcion}</Dropdown.Item>)
+
+                })
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    getDetailsReport(id, ejercicio, descripcion) {
+        this.setState({ infoDetail:<div style={{textAlign:'center'}}><Spinner animation="border" variant="success" /></div>});
+        let este = this;
+        this.setState({idactual:id,ejercicioactual:ejercicio,descripcionactual:descripcion, opccomboreportes: descripcion, resultDetailheads: [], resultDetailitems: [], temp: [],
+        namecontRes:ejercicio+' - '+descripcion,activebtn:true });
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/seccionesreporte',
+            headers: {
+                reporte_id: id,
+                ejercicio: ejercicio //localStorage.getItem("node_id") //node.id
+            }
+        }).then(function (response) {
+            if (response.data.length > 0) {
+                response.data.map((item, indice) => {
+                    este.state.resultDetailheads.push(item)
+                    const temp = [];
+                    este.state.resultDetailitems.push(temp);
+                    este.state.temp.push(
+                        <div className='contResultItem' key={item.clave}>
+                            <Card className='Eje' >
+                                <Card.Header>
+                                    <Accordion.Toggle className='puntero' as={Card.Header} eventKey={indice}>
+                                        {item.descripcion}
+                                    </Accordion.Toggle>
+                                    <Accordion.Collapse eventKey={indice}>
+                                        <Card.Body>
+                                            <ListGroup>
+                                                <MDBTable small striped bordered>
+                                                    <MDBTableHead>
+                                                        <tr>
+                                                            <th>Descripcion</th>
+                                                            <th>Orden</th>
+                                                            <th>Op. Interna</th>
+                                                            <th>Tipo</th>
+                                                            <th>Clave</th>
+                                                            <th>Accion</th>
+                                                        </tr>
+                                                    </MDBTableHead>
+                                                    <MDBTableBody>
+                                                        {este.state.resultDetailitems[indice]}
+                                                    </MDBTableBody>
+                                                </MDBTable>
+                                            </ListGroup>
+                                        </Card.Body>
+
+                                    </Accordion.Collapse>
+
+                                </Card.Header>
+                            </Card></div>)
+
+                })
+            } else {
+                este.setState({ infoDetail:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+            este.state.resultDetailheads.map((item, index) => {
+                HTTPRequest({
+                    method: 'get',
+                    url: config.host+'/api/getItemsHomeModal',
+                    params: {
+                        idapi: id,
+                        ejercicioapi: ejercicio, //localStorage.getItem("node_id") //node.id
+                        claveapi: item.id
+                    }
+                }).then(function (response) {
+                    if (response.data.length > 0) {
+                        response.data.map((item, indice1) => {
+                        console.log(item)
+                            const Combotype =  este.state.tipos.map((tipoitem,indicetipos)=>
+                                <Dropdown.Item  key={indicetipos} onClick={()=>{este.comboTypeAction(tipoitem.id,item)}} >{tipoitem.descripcion}</Dropdown.Item >
+                            );
+                            const ComboOperation =este.state.operations.map((operation,inop)=>
+                                <Dropdown.Item key={inop} onClick={()=>este.comboOperationAction(item.id,operation.clave,operation.descripcion)} >{operation.descripcion}</Dropdown.Item>
+                            );
+
+                            este.state.resultDetailitems[index].push(
+                                <tr key={indice1}>
+                                    <td>{item.descripcion}</td>
+                                    <td>{item.orden}</td>
+                                    <td><DropdownButton title={item.descripcion_operacion}>{ComboOperation}</DropdownButton></td>
+                                    <td>
+                                        <DropdownButton title={item.tipo}>{Combotype}</DropdownButton>
+                                    </td>
+                                    <td><Button onClick={()=>{este.showComponentKey(item.tipo_id,item)}} variant="light">{item.contenido}</Button></td>
+                                    <td style={{display:'flex'}}>
+                                        <Button variant="light">
+                                            <img src={require('./img/edit.png')}/>
+                                        </Button>
+                                        <Button variant="light">
+                                            <img src={require('./img/delete.png')}/>
+                                        </Button>
+                                    </td>
+                                </tr>);
+                        })
+                        //  console.log(response.data);
+                    } else {
+
+                    }
+                    setTimeout(() => {
+                        este.setState({ infoDetail: este.state.temp })
+                    },
+                        750
+                    );
+                }).catch(function (error) {
+                    console.log(error);
+                }).then(function () {
+
+                });
+            })
+
+        });
+
+    }
+
+    onChangeComponent(event){
+        this.setState({componentNew:event.target.value})
+    }
+
+    comboTypeAction(tipo,item){
+        console.log(item)
+        const temp = parseInt(tipo)
+
+        switch(temp){
+            case 1://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+                this.setActionDatosID(item);//Listo MEdio
+                //alert('Datos de Identificacion');
+                break;
+            case 2:
+                    //alert('Captura Manual');
+                break;
+            case 4: //Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+                this.setActionCodeA(item);//Listo Completo
+            //alert('Codigo Agrupador');
+
+                break;
+            case 5://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+                this.setActionPT(item);//Listo Medio
+                //Papel de Trabajo
+                    //alert('papel de Papel de Trabajo')
+                break;
+            case 6://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+                this.setActionOpcionI(item);
+
+
+                    //alert('Operacion Interna');
+                break;
+            case 7:
+                    //alert('Preguntas');
+                break;
+            case 8:
+                    //alert('Dato Dinamico');
+                break;
+            case 9://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+            this.setActionAnexos(item);
+                    //alert('Anexos');
+                //this.getDetailKeyAnexos();
+                break;
+            case 10://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+            this.setActionEspeciales(item);//Listo de este Lado
+                    //alert('Especiales');
+
+
+
+                    /**
+                     *
+                     *
+                     * AGREGAR OPCION INTERNA Y CONDICIONADA
+
+                //this.getDetailKeyEspeciales(item.id);
+                break;
+            case 11:
+                    //alert('Ninguno');
+                break;
+            case 12://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+            this.setActionOpciones(item)//Listo de los 2 lados
+                    //alert('Opciones');
+                //this.getDetailKeyOptions(item.id);
+                break;
+            case 13://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+            this.setActionReportes(item);
+                    //alert('Reportes');
+                break;
+            case 14://Valida
+            this.setState({tipoAccionAct:temp,infoModalSet:[],itemActual:item})
+            this.setActioncondicionada(item);//Listo de este lado
+                    //alert('Condicionada');
+                break;
+    }
+}
+
+setActionDatosID(object){//
+    this.setState({titleModalShowtype:'Datos de Identificacion',dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+    let este =this;
+    HTTPRequest({
+        method: 'get',
+        url: config.host+'/api/datoidentificacion',
+        headers: {
+
+        }
+    }).then(function (response) {
+        response.data.map((item) => {
+            const temp ={
+                action:<input type='radio' name='radioID' onClick={()=>este.setState({tempIDSubmit:item.clave})}></input>,//Falta Funcion de RadioButton
+                code: item.clave,
+                desc:item.descripcion
+            }
+            este.state.dataTemp.rows.push(temp);
+        })
+        este.setState({modalShowType:true, infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+
+
+
+}
+
+setActionCodeA(objeto){
+    if(objeto.contenido!=null && objeto.tipo_id==='4'){
+        this.setState({
+            titleModalShowtype:'Codigo agrupador asignado: '+objeto.contenido,
+        })
+    }else{
+        this.setState({
+            titleModalShowtype:'Codigo agrupador'
+        })
+    }
+    this.setState({dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+
+    let este=this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/codigoagrupador',
+            headers: {
+
+            }
+        }).then(function (response) {
+            response.data.map((item) => {
+           //     console.log(item)
+
+                const temp = {
+                    action:<input name='codea' type='radio' onClick={()=>este.setState({tempIDSubmit:objeto.id,tempCodeSubmit:item.codigo_agrupador})} />,
+                    clave:item.codigo_agrupador,
+                    desc: item.descripcion,
+                }
+                if(objeto.contenido!=item.codigo_agrupador){
+                    este.state.dataTemp.rows.push(temp);
+                }else{
+                    este.state.dataTemp.rows.push({
+                        action:<input name='codea' type='radio'/>,
+                        clave:item.codigo_agrupador,
+                        desc: item.descripcion,
+                    });
+                }
+
+            })
+
+            este.setState({modalShowType:true, infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {});
+}
+
+submitCodeA(){
+    let este = this;
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/updateinternoreporte',
+
+        headers: {
+            dato: this.state.tempCodeSubmit,
+            tipo_id: this.state.tipoAccionAct ,
+            id: this.state.tempIDSubmit
+        }
+    }).then(function (respons) {
+        if (respons.data.mensaje == "good") {
+                        este.setState({modalShowType:false})
+        }
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+}
+
+
+updateComponent(Key){
+    let este=this;
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/_update_componente_details_',
+        headers: {
+            id: este.state.itemActual.id,
+            clave: Key,
+            tipo_id: este.state.tipoAccionAct
+        }
+    }).then(function (response) {
+        console.log(response)
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+}
+
+
+
+setActionPT(object){
+    this.setState({modalShowType:true,titleModalShowtype:this.state.ejercicioactual+' - '+this.state.descripcionactual+' - '+object.descripcion,dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+    let este = this;
+    HTTPRequest({
+        method: 'get',
+        url: config.host+'/papeltrabajolista'
+    }).then(function (respons) {
+        respons.data.recordset.map((item) => {
+            //     console.log(item)
+
+                 const temp = {
+                     action:<input name='codea' type='radio' onClick={()=>este.getDetailsPTSET(item)}  />,
+                     clave:item.clave,
+                     desc: item.descripcion,
+                 }
+                 este.state.dataTemp.rows.push(temp);
+
+             })
+             este.setState({modalShowType:true, infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+
+        console.log(respons.data.recordset)
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+}
+getDetailsPTSET(item){
+    let este=this;
+    this.setState({titleModalFlagEspe:item.descripcion,infoEspecialesSet:[],itemeaux:item})
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/filtrador',
+        headers: {
+            parametro: 'WHERE PTPADRE.papel_id =',
+            clave: item.id
+        }
+    }).then(function (response) {
+        if (response.data.length > 0) {
+            response.data.map((item,indice)=>
+                este.state.infoEspecialesSet.push(
+                    <tr key={indice}>
+                        <td><input type='radio' name='radioPTDetail' onClick={()=>este.setState({tempIDSubmit:item.id})}  /></td>
+                        <td>{item.componente}</td>
+                        <td>{item.descripcion}</td>
+                    </tr>
+                )
+            )
+            este.setState({modalFlagEspeciales:true,infoEspecialesSet:<MDBTable small striped bordered><MDBTableHead><tr><th>Componente</th><th>Descripcion</th></tr></MDBTableHead><MDBTableBody>{este.state.infoEspecialesSet}</MDBTableBody></MDBTable>})
+
+        }else{
+            este.setState({modalFlagEspeciales:true,infoEspecialesSet:<ListGroup.Item>
+                No Existen Registros
+    </ListGroup.Item>})
+
+        }
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {
+
+    });
+
+}
+setActionOpcionI(item){
+    this.setState({OpIntitems:[],modalShowType:true,titleModalShowtype:'Operacion Interna '+this.state.ejercicioactual+' - '+item.descripcion,dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            }],rows: []
+    }})
+    console.log(item.id+' - '+this.state.ejercicioactual+' - '+item.seccion_id)
+
+    let este = this;
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/detail_asignacion_partes_relacionadas',
+        headers: {
+            reporte_id: item.id,
+            ejercicio:este.state.ejercicioactual,
+            seccion_id: item.seccion_id
+        }
+    }).then(function (response) {
+        if(response.data.length>0){
+            response.data.map((x,index)=>{
+                const temp = {
+                    action:<Button>add</Button>,
+                    desc: x.descripcion,
+                }
+                este.state.dataTemp.rows.push(temp);
+            })
+            este.obtenOPINT(item.id)
+
+        }
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+}
+
+
+obtenOPINT(idOp){
+    const ComboOperation =this.state.operations.map((operation,inop)=>
+        <option key={inop} value={operation}  >{operation.descripcion}</option>
+    );
+        let este = this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_get_component_exec_fynal',
+            headers: {
+                id: idOp
+            }
+        }).then(function (response) {
+            if(response.data.length>0){
+                console.log(response.data)
+                response.data.map((temp,indice)=>
+                    este.state.OpIntitems.push(
+                        <div>{temp.descripcion}</div>
+                    )
+                )
+            }
+            setTimeout(este.setState({ infoModalSet:<div style={{display:'flex'}}>
+            <MDBDataTable small data={este.state.dataTemp} striped bordered />
+            <div>
+                <div style={{display:'flex',margin:'auto'}}><Form.Control as="select">
+               {ComboOperation}
+               </Form.Control>
+               <Button>Guardar</Button></div>
+
+               <div>
+               {este.state.OpIntitems}
+            </div>
+
+
+               </div>
+            </div>
+           }),700);
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+}
+
+
+
+setActionAnexos(){
+
+    let este =this;
+    this.setState({modalShowType:true,titleModalShowtype:'Anexos'})
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/seccionesreporte',
+        headers: {
+            reporte_id:este.state.idactual,
+            ejercicio:este.state.ejercicioactual
+        }
+    }).then(function (response) {
+
+
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {
+
+    });
+
+
+}
+
+setActionEspeciales(object){
+    this.setState({modalShowType:true,titleModalShowtype:'Especiales'})
+    let este=this;
+        this.setState({infoKey:[]})
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_get_detail_procesos_especiales',
+            headers: {
+                id: object.id
+            }
+        }).then(function (response) {
+            console.log(response)
+            if(response.data.length>0){
+                este.setState({campo1Espe:response.data[0].partes_relacionada,campo2Espe:response.data[0].partes_no_relacionada,campo3Espe:response.data[0].total})
+            }else{
+                este.setState({campo1Espe:'',campo2Espe:'',campo3Espe:''})
+            }
+            este.setState({modalShowType:true,titleModalShowtype:'Especiales'})
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+
+}
+
+ComboOPCEspecialeS(opc){
+    switch(opc){
+        case 'PR1'://Papel de Trabajo
+            this.getPTEspeciales(0)
+            break;
+        case 'PR2'://Codigo Agrupador
+            this.codeAEspeciales(0);
+            break;
+        case 'PR3'://Captura Manual
+            this.CManualEspeciales(0);
+            break;
+        case 'PR4'://Opcion Interna
+            break;
+        case 'PR5'://Condicionada
+            break;
+        case 'PNR1'://Papel de Trabajo
+            this.getPTEspeciales(1)
+            break;
+        case 'PNR2'://Codigo Agrupador
+        this.codeAEspeciales(1);
+            break;
+        case 'PNR3'://Captura Manual
+            this.CManualEspeciales(1);
+            break;
+        case 'PNR4'://Opcion Interna
+            break;
+        case 'PNR5'://Condicionada
+            break;
+        case 'R1'://Papel de Trabajo
+            this.getPTEspeciales(2)
+            break;
+        case 'R2'://Codigo Agrupador
+            this.codeAEspeciales(2);
+            break;
+        case 'R3'://Captura Manual
+            this.CManualEspeciales(2);
+            break;
+        case 'R4'://Opcion Interna
+            break;
+        case 'R5'://Condicionada
+            break;
+        case 'R6'://Operacion
+            this.OperacionEspecial();
+            break;
+
+    }
+}
+
+
+ComboOPCInversiones(opc){
+    switch(opc){
+        case 'DESI1'://Papel de Trabajo
+            break;
+        case 'DESI2'://Codigo Agrupador
+            break;
+        case 'DESI3'://Captura Manual
+            break;
+        case 'DESI4'://Opcion Interna
+            break;
+        case 'DESI5'://Condicionada
+            break;
+        case 'DENO1'://Papel de Trabajo
+            break;
+        case 'DENO2'://Codigo Agrupador
+            break;
+        case 'DENO3'://Captura Manual
+            break;
+        case 'DENO4'://Opcion Interna
+            break;
+        case 'DENO5'://Condicionada
+            break;
+        case 'DISI1'://Papel de Trabajo
+            break;
+        case 'DISI2'://Codigo Agrupador
+            break;
+        case 'DISI3'://Captura Manual
+            break;
+        case 'DISI4'://Opcion Interna
+            break;
+        case 'DISI5'://Condicionada
+            break;
+        case 'DINO1'://Papel de Trabajo
+            break;
+        case 'DINO2'://Codigo Agrupador
+            break;
+        case 'DINO3'://Captura Manual
+            break;
+        case 'DINO4'://Opcion Interna
+            break;
+        case 'DINO5'://Condicionada
+            break;
+        case 'DCSI1'://Papel de Trabajo
+            break;
+        case 'DCSI2'://Codigo Agrupador
+            break;
+        case 'DCSI3'://Captura Manual
+            break;
+        case 'DCSI4'://Opcion Interna
+            break;
+        case 'DCSI5'://Condicionada
+            break;
+        case 'DCNO1'://Papel de Trabajo
+            break;
+        case 'DCNO2'://Codigo Agrupador
+            break;
+        case 'DCNO3'://Captura Manual
+            break;
+        case 'DCNO4'://Opcion Interna
+            break;
+        case 'DCNO5'://Condicionada
+            break;
+    }
+}
+
+
+
+
+
+OperacionEspecial(){
+    this.setState({titleModalFlagEspe:'Operacion',dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+    let este =this;
+    console.log(this.state.operations)
+    this.state.operations.map((item)=>{
+
+        var temp={
+            action:<input name='codea' type='radio' onClick={()=>este.setState({campo3Espe:item.clave+' '+item.descripcion,modalFlagEspeciales:false})} />,
+            code:item.clave,
+            desc: item.descripcion
+        }
+
+
+
+        este.state.dataTemp.rows.push(temp)
+
+
+
+
+
+    })
+    este.setState({modalFlagEspeciales:true, infoEspecialesSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+
+}
+
+getPTEspeciales(index){
+    this.setState({titleModalFlagEspe:'Papeles de Trabajo '+this.state.ejercicioactual+' - '+this.state.descripcionactual,dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+    let este = this;
+    HTTPRequest({
+        method: 'get',
+        url: config.host+'/papeltrabajolista'
+    }).then(function (respons) {
+        respons.data.recordset.map((item) => {
+            //     console.log(item)
+                 switch(index){
+                     case 0:
+                            este.state.dataTemp.rows.push({
+                                action:<input name='codea' type='radio' onClick={()=>este.setState({campo1Espe:item.clave,modalFlagEspeciales:false})}  />,
+                                clave:item.clave,
+                                desc: item.descripcion,
+                            });
+                         break;
+                    case 1:
+                            este.state.dataTemp.rows.push({
+                                action:<input name='codea' type='radio' onClick={()=>este.setState({campo2Espe:item.clave,modalFlagEspeciales:false})}  />,
+                                clave:item.clave,
+                                desc: item.descripcion,
+                            });
+                        break;
+                    case 2:
+                            este.state.dataTemp.rows.push({
+                                action:<input name='codea' type='radio' onClick={()=>este.setState({campo3Espe:item.clave,modalFlagEspeciales:false})}  />,
+                                clave:item.clave,
+                                desc: item.descripcion,
+                            });
+                        break;
+                 }
+
+
+             })
+             este.setState({modalFlagEspeciales:true, infoEspecialesSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+
+        console.log(respons.data.recordset)
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {});
+}
+
+codeAEspeciales(index){
+    this.setState({titleModalFlagEspe:'Codigos Agrupadores',dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+
+    let este=this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/codigoagrupador',
+            headers: {
+
+            }
+        }).then(function (response) {
+            response.data.map((item) => {
+           //     console.log(item)
+           switch(index){
+            case 0:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo1Espe:item.codigo_agrupador,modalFlagEspeciales:false})}  />,
+                       clave:item.codigo_agrupador,
+                       desc: item.descripcion,
+                   });
+                break;
+           case 1:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo2Espe:item.codigo_agrupador,modalFlagEspeciales:false})}  />,
+                       clave:item.codigo_agrupador,
+                       desc: item.descripcion,
+                   });
+               break;
+           case 2:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo3Espe:item.codigo_agrupador,modalFlagEspeciales:false})}  />,
+                       clave:item.codigo_agrupador,
+                       desc: item.descripcion,
+                   });
+               break;
+        }
+
+            })
+
+            este.setState({modalFlagEspeciales:true, infoEspecialesSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {});
+}
+
+CManualEspeciales(index){
+    this.setState({titleModalFlagEspe:'Captura Manual',dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Codigo',
+                field: 'code',
+                sort: 'asc',
+                width: 200
+            },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+
+    let este=this;
+        HTTPRequest({
+            method: 'get',
+            url: config.host+'/api/_listado_cat_opciones_CM'
+        }).then(function (response) {
+            response.data.map((item) => {
+           //     console.log(item)
+           switch(index){
+            case 0:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo1Espe:item.clave,modalFlagEspeciales:false})}  />,
+                       clave:item.clave,
+                       desc: item.descripcion,
+                   });
+                break;
+           case 1:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo2Espe:item.clave,modalFlagEspeciales:false})}  />,
+                       clave:item.clave,
+                       desc: item.descripcion,
+                   });
+               break;
+           case 2:
+                   este.state.dataTemp.rows.push({
+                       action:<input name='codea' type='radio' onClick={()=>este.setState({campo3Espe:item.clave,modalFlagEspeciales:false})}  />,
+                       clave:item.clave,
+                       desc: item.descripcion,
+                   });
+               break;
+        }
+
+
+            })
+
+            este.setState({modalFlagEspeciales:true, infoEspecialesSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {});
+}
+
+
+
+
+
+
+
+
+
+
+
+setActionOpciones(object){
+    this.setState({dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    },itemsopcion:[]})
+
+        let este = this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_insert_opciones_componentes_id',
+            headers: {
+                componente_id: object.id
+            }
+        }).then(function (response) {
+            if(response.data.length>0){
+                response.data.map((item,indice)=>{
+                /*    if(item.inter_id!=90000){//Estan Checadas
+                        este.state.itemsopcion.push({
+                            id:item.id,
+                            inter_id:item.inter_id,
+                            status:true
+                        })
+                        este.state.dataTemp.rows.push({
+                            action:<input type='checkbox' onClick={()=>este.addNewOption(indice)}/>,
+                            desc:item.descripcion
+                        });
+                    }else{
+                        este.state.itemsopcion.push({
+                            id:item.id,
+                            inter_id:item.inter_id,
+                            status:false
+                        })
+                        este.state.dataTemp.rows.push({
+                            action:<input type='checkbox' onClick={()=>este.addNewOption(indice)} />,
+                            desc:item.descripcion
+                        });
+                //    }
+                })
+
+            }
+            este.setState({infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+
+            este.setState({modalShowType:true,titleModalShowtype:'Opciones'})
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+}
+
+addNewOption(index){
+    if(this.state.itemsopcion[index].status){
+        this.state.itemsopcion[index].status=false;
+
+    }else{
+        this.state.itemsopcion[index].status=true;
+
+    }
+}
+
+
+/**
+ * {
+                        este.state.infoKey.push(
+                            <ListGroup.Item>
+                                {temp.descripcion}
+                            </ListGroup.Item>
+                        )
+                    }
+
+setActionReportes(object){
+    let este =this;
+    this.setState({dataTemp: {
+        columns: [{
+            label: 'Descripcion',
+            field: 'desc',
+            width: 200
+        },{
+                label: 'Accion',
+                field: 'action',
+                width: 200
+            }],rows: []
+    },rows:[]})
+    HTTPRequest({
+        method: 'post',
+        url: config.host+'/api/GET_catalogo_reportes_iniciales_',
+        headers: {
+            id: object.id
+        }
+    }).then(function (response) {
+        if(response.data.length>0){
+            response.data.map((item,indice)=>{
+                console.log(item)
+                if(item.componente_id!=null){
+                    este.state.dataTemp.rows.push({
+                        desc:item.descripcion,
+                        action:<Button variant='outline-danger'><img src={require('./img/delete.png')}></img></Button>
+                    })
+                }else{
+                    este.state.dataTemp.rows.push({
+                        desc:item.descripcion,
+                        action:<input type='radio' name='radioReport' onClick={()=>este.setState({tempIDSubmit: item.ids})}/>
+                    })
+                }
+            })
+
+        }
+        este.setState({infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered />,modalShowType:true,titleModalShowtype:'Asigna Reportes'})
+    }).catch(function (error) {
+        console.log(error);
+    }).then(function () {
+
+    });
+}
+setActioncondicionada(){
+
+    this.setState({dataTemp: {
+        columns: [{
+            label: '#',
+            field: 'action',
+            width: 200
+        },{
+                label: 'Descripcion',
+                field: 'desc',
+                width: 200
+            }],rows: []
+    }})
+
+        let este = this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/listado_parametros'
+        }).then(function (response) {
+            if(response.data.length>0){
+                response.data.map((item,indice)=>{
+                    console.log(item)
+                    const temp={
+                        action:<input type='radio' name='radioCondicionada' onClick={()=>este.setState({tempIDSubmit:item.id})}/>,
+                        desc:item.pregunta
+                    }
+                    este.state.dataTemp.rows.push(temp);
+                })
+
+            }
+            este.setState({infoModalSet: <MDBDataTable small data={este.state.dataTemp} striped bordered /> })
+
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+
+    this.setState({modalShowType:true,titleModalShowtype:'Condicionada'})
+}
+//Componente id
+//Seccion_id - Valor Seleccionado
+
+
+
+    comboOperationAction(idx,clavex,descx){
+        let este = this;
+        const operacion={
+            id:idx,//ID
+            operacion:clavex,//Clave
+            descripcion:descx//Descripcion
+        }
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/updatecomponenteswithreport',
+            headers: {
+                componet: JSON.stringify(operacion)
+            }
+        }).then(function (response) {
+
+            if (response.data.mensaje == "good") {
+                este.getDetailsReport(este.state.idactual,este.state.ejercicioactual,este.state.descripcionactual)
+            }
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    showComponentKey(tipo,item){
+        this.setState({modalInfoShow:true,infoKey:<div style={{textAlign:'center'}}><Spinner animation="border" variant="success" /></div>})
+        const temp = parseInt(tipo)
+        let este =this;
+
+        switch(temp){
+            case 1:
+                    este.setState({infoKey:<ListGroup.Item>
+                        No Existen Registros
+                    </ListGroup.Item>})
+                HTTPRequest({
+                    method: 'get',
+                    url: config.host+'/api/datoidentificacion',
+                    headers: {
+
+                        }
+                }).then(function (response) {
+                        response.data.map((item1) => {
+
+                            if(item1.clave==item.contenido){
+
+                                este.setState({infoKey:<ListGroup.Item>
+                                    {item1.clave} - {item1.descripcion}
+                                </ListGroup.Item>})
+                            }
+                        })
+                        este.setState({modalInfoShow:true,titleInfoModal:'Datos de Identificacion'})
+                    }).catch(function (error) {
+                        console.log(error);
+                    }).then(function () {});
+
+                //alert('Datos de Identificacion');
+                break;
+            case 2:
+                //    alert('Captura Manual');
+                break;
+            case 4:
+            //alert('Codigo Agrupador');
+                this.getDetailKeyCodeA(item.contenido);
+                break;
+            case 5://Papel de Trabajo
+                this.getDetailKeyPaperWork(item);
+                break;
+            case 6:
+                this.getDetailKeyOpInt(item.id);
+
+
+                //    alert('Operacion Interna');
+                break;
+            case 7:
+                //    alert('Preguntas');
+                break;
+            case 8:
+                //    alert('Dato Dinamico');
+                break;
+            case 9:
+                //    alert('Anexos');
+                this.getDetailKeyAnexos();
+                break;
+            case 10:
+                //    alert('Especiales');
+
+                this.getDetailKeyEspeciales(item.id);
+                break;
+            case 11:
+                //    alert('Ninguno');
+                break;
+            case 12:
+                //    alert('Opciones');
+                this.getDetailKeyOptions(item.id);
+                break;
+            case 13:
+                this.setState({infoKey:[]})
+                    HTTPRequest({
+                        method: 'post',
+                        url: config.host+'/api/GET_catalogo_reportes_iniciales_',
+                        headers: {
+                            id: item.id
+                        }
+                    }).then(function (response) {
+                        if(response.data.length>0){
+                            response.data.map((item1,indice)=>{
+
+                                if(item1.componente_id!=null){
+                                    este.state.infoKey.push(<ListGroup.Item>
+                                        {item1.descripcion}
+                            </ListGroup.Item>)
+                                }
+                            })
+                            este.setState({modalInfoShow:true,titleInfoModal:'Reportes Asignados'})
+
+                        }
+
+                    }).catch(function (error) {
+                        console.log(error);
+                    }).then(function () {
+
+                    });
+                //    alert('Reportes');
+                break;
+            case 14:
+                    HTTPRequest({
+                        method: 'post',
+                        url: config.host+'/api/listado_parametros'
+                    }).then(function (response) {
+                        if(response.data.length>0){
+                            response.data.map((itemt,indice)=>{
+                                if(item.parametro_id===itemt.id){
+                                    este.setState({modalInfoShow:true,titleInfoModal:'Condicionada',infoKey:<ListGroup.Item>
+                                    {itemt.pregunta}
+                        </ListGroup.Item>})
+                                }
+                            })
+
+                        }else{
+                            este.setState({modalInfoShow:true,titleInfoModal:'Condicionada',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+                        }
+
+                    }).catch(function (error) {
+                        console.log(error);
+                    }).then(function () {
+
+                    });
+                //    alert('Condicionada');
+                break;
+        }
+
+    }
+
+    getDetailKeyEspeciales(idesp){
+        let este=this;
+        this.setState({infoKey:[]})
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_get_detail_procesos_especiales',
+            headers: {
+                id: idesp
+            }
+        }).then(function (response) {
+            console.log(response)
+            if(response.data.length>0){
+                este.setState({infoKey:
+                <div className='contEspe'>
+                    <div className='itemcontEspe'>
+                        <p>Parte Relacionada</p>
+                        <FormControl  value={response.data[0].partes_relacionada} disabled />
+                    </div>
+                    <div className='itemcontEspe'>
+                    <p>Parte no Relacionada</p>
+                    <FormControl  value={response.data[0].partes_no_relacionada} disabled />
+                    </div>
+                    <div className='itemcontEspe'>
+                    <p>Resultado</p>
+                    <FormControl  value={response.data[0].total} disabled />
+                    </div>
+
+                </div>
+                ,modalInfoShow:true,titleInfoModal:'Especiales'})
+
+            }else{
+                este.setState({modalInfoShow:true,titleInfoModal:'Especiales',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    getDetailKeyAnexos(){
+
+    }
+
+
+    getDetailKeyOptions(id){
+        this.setState({infoKey:[]})
+        let este = this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_insert_opciones_componentes_id',
+            headers: {
+                componente_id: id
+            }
+        }).then(function (response) {
+            if(response.data.length>0){
+                response.data.map((temp,indice)=>{
+                    if(temp.inter_id!=90000){
+                        console.log(temp)
+                        este.state.infoKey.push(
+                            <ListGroup.Item>
+                                {temp.descripcion}
+                            </ListGroup.Item>
+                        )
+                    }
+                })
+                este.setState({modalInfoShow:true,titleInfoModal:'Opciones Seleccionadas'})
+            }else{
+                este.setState({modalInfoShow:true,titleInfoModal:'Opciones Seleccionadas',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    getDetailKeyOpInt(idOp){
+        this.setState({infoKey:[]})
+        let este = this;
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_get_component_exec_fynal',
+            headers: {
+                id: idOp
+            }
+        }).then(function (response) {
+            if(response.data.length>0){
+                response.data.map((temp,indice)=>
+                    este.state.infoKey.push(
+                        <tr key={indice}>
+                            <td>({temp.clave}) {temp.operacion_descripcion} </td>
+                            <td>{temp.descripcion}</td>
+                        </tr>
+                    )
+                )
+                este.setState({modalInfoShow:true,titleInfoModal:'Operaciones Internas Configuradas',infoKey:<MDBTable striped bordered><MDBTableHead><tr><th>Operacion</th><th>Descripcion</th></tr></MDBTableHead><MDBTableBody>{este.state.infoKey}</MDBTableBody></MDBTable>})
+            }else{
+                este.setState({modalInfoShow:true,titleInfoModal:'Operaciones Internas Configuradas',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+
+    getDetailKeyCodeA(idCodigo){
+        this.setState({infoKey:[]})
+        let este = this;
+        HTTPRequest({
+            method: 'get',
+            url: config.host+'/api/getCodeA',
+            headers: {
+                codigo:idCodigo
+            }
+        }).then(function (response) {
+            if(response.data.length>0){
+                console.log(response.data)
+                response.data.map((item,index)=>
+
+                    este.state.infoKey.push(
+                        <ListGroup.Item>
+                        {item.codigo_agrupador} - {item.descripcion}
+                        </ListGroup.Item>
+                    )
+                )
+                este.setState({modalInfoShow:true,titleInfoModal:'Codigos Agrupadores'})
+            }else{
+                este.setState({modalInfoShow:true,titleInfoModal:'Codigos Agrupadores',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+            }
+
+
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    getDetailKeyPaperWork(idpapel){
+        this.setState({infoKey:[]})
+        let este = this;
+
+        HTTPRequest({
+            method: 'get',
+            url: config.host+'/api/getInfoPaperWork',
+            headers: {
+                idpapelapi:idpapel.pt_id
+            }
+        }).then(function (response) {
+                este.setState({titleInfoModal:response.data[0].clave+' - '+response.data[0].descripcion})
+
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/filtrador',
+            headers: {
+                parametro: 'WHERE PTPADRE.papel_id =',
+                clave: idpapel.pt_id
+            }
+        }).then(function (response) {
+            if (response.data.length > 0) {
+                response.data.map((item,indice)=>{
+                if(item.id===idpapel.detail_pt_id){
+                    este.state.infoKey.push(
+                        <tr style={{background:'red',color:'#ffff'}} key={indice}>
+                            <td>{item.componente}</td>
+                            <td>{item.descripcion}</td>
+                        </tr>
+                    )
+                }else{
+                    este.state.infoKey.push(
+                        <tr key={indice}>
+                            <td>{item.componente}</td>
+                            <td>{item.descripcion}</td>
+                        </tr>
+                    )
+                }
+
+                })
+                este.setState({modalInfoShow:true,infoKey:<MDBTable striped bordered><MDBTableHead><tr><th>Componente</th><th>Descripcion</th></tr></MDBTableHead><MDBTableBody>{este.state.infoKey}</MDBTableBody></MDBTable>})
+
+            }else{
+                este.setState({modalInfoShow:true,titleInfoModal:'No hay papeles de trabajo asignados',infoKey:<ListGroup.Item>
+                    No Existen Registros
+        </ListGroup.Item>})
+
+            }
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+
+    }
+
+
+    saveAction(){
+        let este =this;
+        switch(this.state.tipoAccionAct){
+            case 1://Valida
+
+                //alert('Datos de Identificacion');
+                this.updateComponent(this.state.tempIDSubmit);
+                this.setState({modalShowType:false})
+                break;
+            case 2:
+                    //alert('Captura Manual');
+                break;
+            case 4: //Valida
+            this.submitCodeA();
+            //alert('Codigo Agrupador');
+
+                break;
+            case 5://Valida
+            HTTPRequest({
+                method: 'post',
+                url: config.host+'/api/_update_papers_to_components_detail',
+                headers: {
+                    // dato: i,
+                    tipo_id: este.state.tipoAccionAct,
+                    id: este.state.itemActual.id,
+                    pt_relacion: JSON.stringify({
+                        pt_id: este.state.itemeaux.id,
+                        pt: este.state.itemeaux.clave,
+                        detail_pt_id: este.state.tempIDSubmit
+                    })
+                }
+            }).then(function (response) {
+                console.log(response)
+                este.setState({modalFlagEspeciales:false,modalShowType:false})
+            }).catch(function (error) {
+                console.log(error);
+            }).then(function () {
+
+            });
+                break;
+            case 6://Valida
+
+
+
+                    //alert('Operacion Interna');
+                break;
+            case 7:
+                    //alert('Preguntas');
+                break;
+            case 8:
+                    //alert('Dato Dinamico');
+                break;
+            case 9://Valida
+                 //alert('Anexos');
+                //this.getDetailKeyAnexos();
+                break;
+            case 10://Valida
+            HTTPRequest({
+                method: 'post',
+                url: config.host+'/api/_save_detail_procesos_especiales',
+                headers: {
+                    parte_relacionada: este.state.campo1Espe,
+                    parte_no_relacionada: este.state.campo2Espe,
+                    totals: este.state.campo3Espe,
+                    id: este.state.itemActual.id
+                },
+            }).then(function (response) {
+                console.log(response)
+                este.setState({modalShowType:false})
+                este.updateComponent('ESPE')
+            }).catch(function (error) {
+                console.log(error);
+            }).then(function () {
+
+            });
+
+                    //alert('Especiales');
+
+
+
+                    /**
+                     *
+                     *
+                     * AGREGAR OPCION INTERNA Y CONDICIONADA
+
+                //this.getDetailKeyEspeciales(item.id);
+                break;
+            case 11:
+                    //alert('Ninguno');
+                break;
+            case 12://Valida
+              this.submitOpciones()
+                    //alert('Opciones');
+                //this.getDetailKeyOptions(item.id);
+                break;
+            case 13://Valida
+            HTTPRequest({
+                method: 'post',
+                url: config.host+'/api/guarda_configuracion_reporte_componente',
+                headers: {
+                    xinfor: JSON.stringify({
+                        componente_id: este.state.itemActual.id,
+                        reporte_id: este.state.itemActual.reporte_id,
+                        reporte_relacionado_componente_id: este.state.tempIDSubmit
+                    })
+                }
+            }).then(function (response) {
+                console.log(response)
+                este.setState({modalShowType:false})
+                este.updateComponent('R')
+            }).catch(function (error) {
+                console.log(error);
+            }).then(function () {
+
+            });
+                break;
+            case 14://Valida
+            HTTPRequest({
+                method: 'post',
+                url: config.host+'/api/actualiza_componente_parametro',
+                headers: {
+                    id: este.state.tempIDSubmit,//id de el Parametro
+                    componente_id: este.state.itemActual.id,//Componente id
+                    ejercicio: este.state.ejercicioactual,//Ejercicio
+                    tipo_id: este.state.tipoAccionAct
+                }
+            }).then(function (response) {
+                console.log(response)
+                este.setState({modalShowType:false})
+            }).catch(function (error) {
+                console.log(error);
+            }).then(function () {
+
+            });
+                break;
+    }
+    este.getDetailsReport(este.state.idactual,este.state.ejercicioactual,este.state.descripcionactual)
+
+    }
+
+
+    submitOpciones(){
+        var tempenv=[]
+        this.state.itemsopcion.map((item)=>{
+            if(item.status){
+                tempenv.push({
+                    id:item.id,
+                    inter_id:item.inter_id
+                })
+                console.log(item)
+            }
+        })
+        let este = this;
+        console.log(JSON.stringify(tempenv))
+        console.log(this.state.ejercicioactual)
+        console.log(this.state.idactual)
+        HTTPRequest({
+            method: 'post',
+            url: config.host+'/api/_insert_opciones_componentes_',
+            headers: {
+                data: JSON.stringify(tempenv),
+                ejercicio: este.state.ejercicioactual,
+                componente_id: este.state.itemActual.id,
+                inter_id:null
+            }
+        }).then(function (response) {
+            este.updateComponent('O')
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    onChangePertenece(event){
+        this.setState({perteneceNew:event.target.value})
+    }
+
+    submitNewComponent(){
+        alert('aqui va el codigo para registrar un Componente nuevo')
+    }
+
+    getTipos(){
+        let este = this;
+        HTTPRequest.get(config.host+'/api/tiposcomponentes', {
+        }).then(function (response) {
+            if (response.data.length > 0) {
+                este.setState({tipos:response.data});
+                console.log(este.state.tipos);
+            }
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+    getOperations(){
+        const este = this;
+        HTTPRequest.get(config.host+'/api/resultado', {
+        }).then(function (response) {
+            if(response.data.recordset.length>0){
+                este.setState({operations:response.data.recordset});
+                console.log(response.data.recordset);
+            }
+        }).catch(function (error) {
+            console.log(error);
+        }).then(function () {
+
+        });
+    }
+
+
+    render() {
+        return (
+            <div className='contenedorreport'>
+                <h4 className='titleHome'>Detalle de Reportes</h4>
+                <div className='btnsHReport'>
+                    {this.state.activebtn?<Button  onClick={()=>this.setState({modalNewShow:true})} className='btnNewComp InputHeaderR' variant='success'>Nuevo Componente</Button>:null}
+
+                        <Button className='btnRefresh InputHeaderR' variant='success'>Actualizar</Button>
+                    </div>
+                <div className='HeaderReportes'>
+                    <div className='combosHReport'>
+                        <DropdownButton className='InputHeaderR combo1' id="dropdown-item-button" title={this.state.opccomboest}>
+                            {this.state.opccombosestOPC}
+                        </DropdownButton>
+                        <DropdownButton className='InputHeaderR combo2' id="dropdown-item-button" title={this.state.opccomboreportes}>
+                            {this.state.opccomboreportesOPC}
+                        </DropdownButton>
+                    </div>
+
+                </div>
+                <div className='contResult'>
+                    <h5 className='titleHome'>{this.state.namecontRes}</h5>
+                    <Accordion className='contEst' defaultActiveKey="1">
+                        {this.state.infoDetail}
+                    </Accordion>
+
+                </div>
+                <ModalShowInversiones este={this} show={this.state.flagmodalInversiones} onHide={()=>this.setState({flagmodalInversiones:false})} />
+                <ModalShowEspeciales  savePT={()=>this.saveAction()} este={this} title={this.state.titleModalFlagEspe} content={this.state.infoEspecialesSet} show={this.state.modalFlagEspeciales} onHide={()=>this.setState({modalFlagEspeciales:false})}/>
+                <ComponentModalShowNew este={this} submit={()=>this.submitNewComponent()} changeComponent={this.onChangeComponent} changePertenece={this.onChangePertenece} este={this} show={this.state.modalNewShow} onHide={() => this.setState({ modalNewShow: false})} />
+                <ShowKeyInfo este={this} show={this.state.modalInfoShow} onHide={() => this.setState({ modalInfoShow: false})}/>
+                <ModalTypeChange typeAct={this.state.tipoAccionAct} este ={this} save={()=>{this.saveAction()}} content={this.state.infoModalSet} title={this.state.titleModalShowtype} show={this.state.modalShowType}  onHide={() => this.setState({ modalShowType: false})}/>
+            </div>
+        );
+    }
+
+}
+
+
+function ComponentModalShowNew(props) {
+    return (
+        <Modal
+            {...props}
+            size="lg"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h4 className='title'>Nuevo Componente</h4>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+            <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>Reporte:</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.namecontRes}  disabled />
+                </InputGroup>
+                <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>Componente:</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.componentNew} onChange={props.changeComponent} placeholder='clave' />
+                </InputGroup>
+                <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>Pertenece a:</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.perteneceNew} onChange={props.changePertenece} placeholder='Descripcion' />
+                </InputGroup>
+            </Modal.Body>
+            <Modal.Footer>
+            <Button onClick={props.submit}>Guardar</Button>
+
+                <Button onClick={props.onHide}>Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
+
+function ShowKeyInfo(props){
+    return (
+        <Modal
+            {...props}
+            size="lg"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h4 className='title'>{props.este.state.titleInfoModal}</h4>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+{props.este.state.infoKey}
+
+            </Modal.Body>
+            <Modal.Footer>
+                <Button onClick={props.onHide}>Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
+
+function ModalTypeChange(props){
+    return (
+        <Modal
+            {...props}
+            size="xl"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h4 className='title'>{props.title}</h4>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+            {props.typeAct===10?<div className='contEspe'>
+                <div className='itemcontEspe'>
+                    <p>Parte Relacionada</p>
+                    <FormControl onChange={(event)=>props.este.ComboOPCEspecialeS(event.target.value)}  as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PR1'>Papel de Trabajo</option>
+                        <option value='PR2'>Codigo Agrupador</option>
+                        <option value='PR3'>Captura Manual</option>
+                        <option value='PR4'>Opcion Interna</option>
+                        <option value='PR5'>Condicionada</option>
+                    </FormControl>
+                    <FormControl style={{background:'red',color:'#ffff',textAlign:'center'}}  value={props.este.state.campo1Espe} disabled />
+
+                </div>
+                <div className='itemcontEspe'>
+                <p>Parte no Relacionada</p>
+                <FormControl onChange={(event)=>props.este.ComboOPCEspecialeS(event.target.value)}  as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PNR1' >Papel de Trabajo</option>
+                        <option value='PNR2'>Codigo Agrupador</option>
+                        <option value='PNR3'>Captura Manual</option>
+                        <option value='PNR4'>Opcion Interna</option>
+                        <option value='PNR5'>Condicionada</option>
+                    </FormControl>
+                <FormControl style={{background:'red',color:'#ffff',textAlign:'center'}} value={props.este.state.campo2Espe} disabled />
+
+                </div>
+                <div className='itemcontEspe'>
+                <p>Resultado</p>
+                <FormControl onChange={(event)=>props.este.ComboOPCEspecialeS(event.target.value)}  as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='R1'>Papel de Trabajo</option>
+                        <option value='R2'>Codigo Agrupador</option>
+                        <option value='R3'>Captura Manual</option>
+                        <option value='R4'>Opcion Interna</option>
+                        <option value='R5'>Condicionada</option>
+                        <option value='R6'>Operacion</option>
+                    </FormControl>
+                <FormControl style={{background:'red',color:'#ffff',textAlign:'center'}} value={props.este.state.campo3Espe} disabled />
+                </div>
+
+            </div>:props.content}
+            </Modal.Body>
+            <Modal.Footer>
+                {props.este.state.tipoAccionAct!=5?<Button onClick={props.save}>Guardar</Button>:null}
+
+                <Button onClick={props.onHide}>Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
+
+function ModalShowEspeciales(props){
+    return (
+        <Modal
+            {...props}
+            size="xl"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h4 className='title'>{props.title}</h4>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                {props.content}
+            </Modal.Body>
+            <Modal.Footer>
+                {props.este.state.tipoAccionAct===5?<Button onClick={props.savePT}>Guardar</Button>:null}
+                <Button onClick={props.onHide}>Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
+
+function ModalShowInversiones(props){
+    return (
+        <Modal
+            {...props}
+            size="xl"
+            aria-labelledby="contained-modal-title-vcenter"
+            centered
+        >
+            <Modal.Header closeButton>
+                <Modal.Title id="contained-modal-title-vcenter">
+                <h4 className='title'>INVERSIONES - {props.title}</h4>
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+            <div className='contEspe'>
+                <div className='itemcontEspe'>
+                    <p>DE</p>
+                    <div>
+                    <div>
+                    <FormControl   as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PNR1' >Papel de Trabajo</option>
+                        <option value='PNR2'>Codigo Agrupador</option>
+                        <option value='PNR3'>Captura Manual</option>
+                        <option value='PNR4'>Opcion Interna</option>
+                        <option value='PNR5'>Condicionada</option>
+                    </FormControl>
+
+                        <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>SI</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DESI} type='text' disabled/>
+                </InputGroup>
+                    </div>
+                    <div>
+                    <FormControl   as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PNR1' >Papel de Trabajo</option>
+                        <option value='PNR2'>Codigo Agrupador</option>
+                        <option value='PNR3'>Captura Manual</option>
+                        <option value='PNR4'>Opcion Interna</option>
+                        <option value='PNR5'>Condicionada</option>
+                    </FormControl>
+                        <InputGroup >
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>NO</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DENO} type='text' disabled/>
+                </InputGroup>
+
+                    </div>
+                </div>
+
+
+                </div>
+                <div className='itemcontEspe'>
+                <p>DI</p>
+                <div>
+                    <div>
+                    <FormControl   as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PNR1' >Papel de Trabajo</option>
+                        <option value='PNR2'>Codigo Agrupador</option>
+                        <option value='PNR3'>Captura Manual</option>
+                        <option value='PNR4'>Opcion Interna</option>
+                        <option value='PNR5'>Condicionada</option>
+                    </FormControl>
+
+                        <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>SI</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DISI} type='text' disabled/>
+                </InputGroup>
+                    </div>
+                    <div>
+                    <FormControl   as='select' >
+                        <option>Seleccione una Opcion</option>
+                        <option value='PNR1' >Papel de Trabajo</option>
+                        <option value='PNR2'>Codigo Agrupador</option>
+                        <option value='PNR3'>Captura Manual</option>
+                        <option value='PNR4'>Opcion Interna</option>
+                        <option value='PNR5'>Condicionada</option>
+                    </FormControl>
+                        <InputGroup >
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>NO</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DINO} type='text' disabled/>
+                </InputGroup>
+
+                    </div>
+                </div>
+
+
+                </div>
+                <div className='itemcontEspe'>
+                <p>DC</p>
+                <div>
+                    <div>
+                        <FormControl   as='select' >
+                            <option>Seleccione una Opcion</option>
+                            <option value='R1'>Papel de Trabajo</option>
+                            <option value='R2'>Codigo Agrupador</option>
+                            <option value='R3'>Captura Manual</option>
+                            <option value='R4'>Opcion Interna</option>
+                            <option value='R5'>Condicionada</option>
+                            <option value='R6'>Operacion</option>
+                        </FormControl>
+                        <InputGroup className="mb-3">
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>SI</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DCSI} type='text' disabled/>
+                </InputGroup>
+                    </div>
+                    <div>
+                        <FormControl  as='select' >
+                            <option>Seleccione una Opcion</option>
+                            <option value='R1'>Papel de Trabajo</option>
+                            <option value='R2'>Codigo Agrupador</option>
+                            <option value='R3'>Captura Manual</option>
+                            <option value='R4'>Opcion Interna</option>
+                            <option value='R5'>Condicionada</option>
+                            <option value='R6'>Operacion</option>
+                        </FormControl>
+                        <InputGroup >
+                    <InputGroup.Prepend>
+                        <InputGroup.Text>NO</InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <FormControl value={props.este.state.DCNO} type='text' disabled/>
+                </InputGroup>
+
+                    </div>
+                </div>
+
+
+
+                </div>
+
+            </div>
+            </Modal.Body>
+            <Modal.Footer>
+                <Button >Guardar</Button>
+                <Button >Cerrar</Button>
+            </Modal.Footer>
+        </Modal>
+    );
+}
+
+
+
+
+ *
+ *
+ */

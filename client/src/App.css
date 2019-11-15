@@ -1,0 +1,53 @@
+.x{
+    background: rgba(161, 160, 160, 0.5);
+    box-shadow: 2px 2px 2px 2px rgba(1,1,1,.24);
+} 
+
+.ContainerPrin{
+    
+  /*IMPORTANTE*/
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.containerx{
+    text-align: center;
+
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  -webkit-transform: translate(-50%, -50%);
+  padding: 30px;
+  width: 85%;
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  margin: auto;
+}
+
+.containerx li{
+    background: grey;
+    list-style: none;
+    margin: 10px auto;
+    width: 30%;
+    font-size: 30px;
+    padding: 70px;
+    border-radius: 10px;
+    color:#ffff;    
+}
+
+li:hover{
+    animation: x 2s forwards;
+    
+}
+
+@keyframes x{
+    from{
+        background: grey;
+    }
+    to{
+        background: rgba(61, 61, 61, 0.5);
+    }
+}
