@@ -3,12 +3,8 @@ const path = require('path');
 const app = express();
 var bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken');   
-const sql =require('./server/config/conection')
 var cron = require('node-cron');
-var public = __dirname + "/public/";
-
-
-
+//var public = __dirname + "/public/";
 
 app.use(bodyParser.urlencoded({extended:false}))
 app.use(bodyParser.json())
@@ -42,20 +38,11 @@ app.use((req, res, next)=> {
     }
 });
 
-app.use(express.static(path.join(__dirname, 'client/build')));
-
-app.get('/api/getList', (req,res) => {
-    var list = ["item1", "item2", "item3"];
-    res.json(list);
-    console.log('Sent list of items');
-});
-
-
-const api= require('./server/routes/api');
-
+const api= require('./src/server/routes/api');
 app.use('/api',api)
 
 
+app.use(express.static(path.join(__dirname, 'client/build')));
 app.get('*', (req,res) =>{
     res.sendFile(path.join(__dirname+'/client/build/index.html'));
 });
@@ -67,6 +54,15 @@ app.listen(port, () => {
 })
 
 
-/**      Define rutas */
+/**      Errores   */
+
+/**
+ * 100.. Informativo
+ * 200.. Correcto
+ * 300.. Redirecciones
+ * 400.. No encontrado
+ * 500.. Error en el Servidor
+ * 
+ */
 
 

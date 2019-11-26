@@ -1,27 +1,16 @@
 import React, { Component } from 'react';
 import { Route, Switch } from 'react-router-dom';
 import './App.css';
-
+import Login from './Views/login';
+import Dashboard from './Views/dashboard';
 class App extends Component {
   render() {
-    const App = () => (
-      <div>
-        <Switch>
-          <h2>holaaa</h2>
-          {/*          Login              /
-          <Route exact path='/' component={Login} />
-
-          {/*          Errores              / 
-         7 <Route component={NOTFOUND} />
-*/}
-        </Switch>
-      </div>
-    )
-    return (
-      <Switch>
-        <App />
+    return  (
+      <Switch>           
+        <Route exact path='/' component={Login} />
+        <Route exact path='/home' component={Dashboard}/>
       </Switch>
-    );
+    )
   }
 }
 
